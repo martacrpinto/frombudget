@@ -1,0 +1,508 @@
+.remun-page {
+  padding: 32px;
+  animation: fadeIn 200ms ease;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+.remun-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.remun-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin-bottom: 4px;
+}
+
+.remun-subtitle {
+  font-size: 11.5px;
+  color: var(--gray-400);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.remun-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.remun-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.remun-btn--primary { background: var(--gray-900); color: #fff; border: none; }
+.remun-btn--primary:hover:not(:disabled) { background: var(--gray-700); }
+.remun-btn--primary:disabled { background: var(--gray-300); cursor: not-allowed; }
+
+.remun-btn--ghost { background: transparent; color: var(--gray-700); border: 1px solid var(--gray-200); }
+.remun-btn--ghost:hover { background: var(--gray-50); border-color: var(--gray-300); }
+
+.remun-btn--danger { color: var(--cost); border: 1px solid var(--cost-light); background: transparent; }
+.remun-btn--danger:hover { background: var(--cost-bg); }
+
+/* ── KPI grid — 5 cards ────────────────────────────────────────────────── */
+.remun-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+@media (max-width: 1200px) { .remun-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 800px)  { .remun-kpi-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ── Section ──────────────────────────────────────────────────────────── */
+.remun-section {
+  background: #ffffff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden; /* restored — needed for border-radius */
+}
+
+/* ── Table wrapper ────────────────────────────────────────────────────── */
+.remun-table-wrap {
+  overflow-x: auto;
+}
+
+/* Monthly overview: horizontal + vertical scroll */
+.remun-monthly-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 520px;
+  /* border-radius applied by parent .remun-section overflow:hidden */
+}
+
+.remun-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--gray-100);
+  gap: 16px;
+}
+
+.remun-section-title { font-size: 14px; font-weight: 600; color: var(--gray-800); }
+
+.remun-section-note {
+  font-size: 11.5px;
+  color: var(--gray-400);
+  background: var(--gray-100);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.remun-hint-tip {
+  font-size: 11px;
+  color: var(--gray-400);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Table wrapper ────────────────────────────────────────────────────── */
+.remun-table-wrap {
+  overflow-x: auto;
+  /* Allow sticky headers to work correctly inside overflow container */
+}
+
+/* ── Main table ───────────────────────────────────────────────────────── */
+.remun-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  /* min-width set per table via colgroup */
+}
+
+/* Monthly table: narrower min-width */
+.remun-monthly-table {
+  min-width: 900px !important;
+}
+
+/* Monthly table header: sticky within its own scroll container */
+.remun-monthly-wrap .remun-monthly-table thead tr th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--gray-50);
+}
+
+/* Group header row */
+.remun-group-header th {
+  padding: 6px 4px;
+  text-align: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-bottom: none;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.group-identity { background: #fff; }
+.group-meal { background: #f0f9f4; color: var(--revenue); }
+.group-base { background: #f5f5f5; color: var(--gray-600); border-left: 2px solid var(--gray-200); }
+.group-idx { background: #fff8f0; color: #92400e; border-left: 2px solid #fed7aa; }
+.group-inc { background: #f0f4ff; color: #3730a3; border-left: 2px solid #c7d2fe; }
+.group-employer { background: var(--gray-900); color: #ffffff; border-left: 2px solid var(--gray-700); }
+
+/* Column headers — main table (2 header rows: group + columns) */
+.remun-table:not(.remun-monthly-table) thead tr:last-child th {
+  padding: 8px 10px;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gray-500);
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  white-space: nowrap;
+  position: sticky;
+  top: 22px; /* below the group header row */
+  z-index: 9;
+}
+
+/* Monthly table — single header row, top: 0 */
+.remun-monthly-table thead tr th {
+  padding: 8px 10px;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gray-500);
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 9;
+}
+
+.remun-monthly-table thead tr th:first-child { text-align: left; }
+
+.remun-table:not(.remun-monthly-table) thead tr:last-child th:first-child,
+.remun-table:not(.remun-monthly-table) thead tr:last-child th.col-role { text-align: left; }
+
+/* Section separators in col headers — MainTable */
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) thead tr:last-child th:nth-child(4)  { border-left: 2px solid #bbf7d0; }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) thead tr:last-child th:nth-child(6)  { border-left: 2px solid var(--gray-300); }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) thead tr:last-child th:nth-child(9)  { border-left: 2px solid #c7d2fe; }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) thead tr:last-child th:nth-child(14) { border-left: 2px solid var(--gray-700); }
+/* AllConsolidatedTable header borders */
+.remun-all-table thead tr:last-child th:nth-child(5)  { border-left: 2px solid #bbf7d0; }
+.remun-all-table thead tr:last-child th:nth-child(7)  { border-left: 2px solid var(--gray-300); }
+.remun-all-table thead tr:last-child th:nth-child(10) { border-left: 2px solid #c7d2fe; }
+.remun-all-table thead tr:last-child th:nth-child(15) { border-left: 2px solid var(--gray-700); }
+
+/* Rows */
+.remun-row { border-bottom: 1px solid var(--gray-100); }
+.remun-row:hover { background: var(--gray-50); }
+.remun-row td { padding: 0; height: 50px; vertical-align: middle; }
+
+/* Column widths */
+.col-pos { width: 36px; min-width: 32px; text-align: center; padding: 0 6px; font-size: 11px; color: var(--gray-400); }
+.col-role { width: 150px; min-width: 130px; padding: 0 6px; }
+.col-num-edit { width: 105px; min-width: 90px; padding: 0 2px; }
+.col-num-calc { width: 108px; min-width: 90px; text-align: right; padding: 0 10px; }
+.col-section-total { background: rgba(0,0,0,0.025); font-weight: 600; }
+.col-employer { width: 120px; min-width: 105px; }
+.col-action { width: 32px; min-width: 32px; text-align: center; }
+/* Compact pct columns — idx and inc */
+.col-pct {
+  width: 64px;
+  min-width: 56px;
+  max-width: 64px;
+  padding: 0;
+  overflow: hidden;
+  text-align: right;
+}
+
+/* Section left borders — MainTable: # | Role | Name | Meal/Day | Ann.Meal | Ann.Sal | IHT | BaseTotal | Idx | Inc | FinalSal | IHT | FinalTotal | Employer | Action */
+/* Meal starts col4, Base col6, Inc col9, Employer col14 */
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) .remun-row td:nth-child(4)  { border-left: 2px solid #bbf7d0; }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) .remun-row td:nth-child(6)  { border-left: 2px solid var(--gray-200); }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) .remun-row td:nth-child(9)  { border-left: 2px solid #c7d2fe; }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) .remun-row td:nth-child(14) { border-left: 2px solid var(--gray-700); }
+
+/* AllConsolidatedTable: # | Role | Name | Dept | Meal/Day | Ann.Meal | Ann.Sal | IHT | BaseTotal | Idx | Inc | FinalSal | IHT | FinalTotal | Employer */
+/* Meal starts col5, Base col7, Inc col10, Employer col15 */
+.remun-all-table .remun-row td:nth-child(5)  { border-left: 2px solid #bbf7d0; }
+.remun-all-table .remun-row td:nth-child(7)  { border-left: 2px solid var(--gray-200); }
+.remun-all-table .remun-row td:nth-child(10) { border-left: 2px solid #c7d2fe; }
+.remun-all-table .remun-row td:nth-child(15) { border-left: 2px solid var(--gray-700); }
+
+/* Calc cells with dual value */
+.calc-cell {
+  position: relative;
+  cursor: help;
+  color: var(--gray-600);
+  font-variant-numeric: tabular-nums;
+}
+
+.calc-val {
+  display: block;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.calc-monthly-hint {
+  display: block;
+  font-size: 9.5px;
+  color: var(--gray-400);
+  line-height: 1.2;
+  margin-top: 1px;
+}
+
+.total-col { font-weight: 600; }
+
+/* Total row */
+.remun-total-row td {
+  height: 44px;
+  vertical-align: middle;
+  background: var(--gray-900);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 12px;
+  text-align: right;
+  padding: 0 10px;
+  border-top: 2px solid var(--gray-700);
+  font-variant-numeric: tabular-nums;
+}
+.remun-total-row .total-label {
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  padding: 0 12px;
+}
+.remun-total-row .total-highlight { background: #111; }
+/* tfoot borders applied inline — nth-child would mis-count due to colSpan */
+
+/* Editable inputs */
+.remun-num-input {
+  width: 100%;
+  height: 50px;
+  border: none;
+  outline: none;
+  background: transparent;
+  text-align: right;
+  padding: 0 10px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--gray-900);
+  font-variant-numeric: tabular-nums;
+  transition: background var(--transition);
+}
+.remun-num-input:focus { background: #f8f8f8; outline: 2px solid #d0d0d0; outline-offset: -2px; border-radius: 4px; }
+.remun-num-input:hover:not(:focus) { background: rgba(0,0,0,0.02); }
+
+.remun-pct-wrap {
+  display: flex;
+  align-items: center;
+  padding: 0 4px 0 4px;
+  height: 50px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.remun-pct-input {
+  flex: 1;
+  height: 50px;
+  border: none;
+  outline: none;
+  background: transparent;
+  text-align: right;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--gray-900);
+  min-width: 0;
+  width: 100%;
+  transition: background var(--transition);
+}
+.remun-pct-input:focus { background: #f8f8f8; border-radius: 3px; }
+.remun-pct-symbol {
+  font-size: 10px;
+  color: var(--gray-400);
+  margin-left: 1px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* Role select */
+.remun-select {
+  width: 100%;
+  height: 50px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--gray-900);
+  padding: 0 8px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23707070' d='M5 7L1 2h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  cursor: pointer;
+}
+.remun-select:hover { background-color: rgba(0,0,0,0.02); }
+
+/* Remove button */
+.remun-remove-btn {
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--gray-400);
+  margin: 0 auto;
+  transition: all var(--transition);
+}
+.remun-row:hover .remun-remove-btn { opacity: 1; }
+.remun-remove-btn:hover { background: var(--cost-bg); color: var(--cost); }
+
+/* ── Monthly table ────────────────────────────────────────────────────── */
+.remun-monthly-table { min-width: 1100px; }
+
+/* Monthly table: clean rows, no nth-child borders */
+.remun-monthly-table .remun-row td { border-left: none !important; }
+.remun-monthly-table .remun-total-row td { border-left: none !important; }
+.remun-monthly-table thead tr:last-child th { border-left: none !important; }
+
+.col-fte-role {
+  width: 200px; min-width: 160px;
+  text-align: left;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-800);
+}
+.col-month-val {
+  width: 74px; min-width: 64px;
+  text-align: right; padding: 0 7px;
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  color: var(--gray-700);
+}
+.col-annual-total {
+  width: 100px; min-width: 88px;
+  text-align: right; padding: 0 12px;
+  font-weight: 600; font-variant-numeric: tabular-nums;
+  border-left: 1px solid var(--gray-200) !important;
+}
+
+.fte-num { font-size: 10px; color: var(--gray-400); margin-right: 6px; }
+.fte-role { font-size: 12px; font-weight: 500; color: var(--gray-800); }
+.fte-role em { color: var(--gray-300); font-style: italic; font-weight: 400; }
+
+/* Special months (holiday/christmas) — very subtle highlight */
+.month-special { background: rgba(179,148,111,0.05); }
+
+.month-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  background: var(--warm-sand);
+  color: #fff;
+  font-size: 7.5px;
+  font-weight: 700;
+  margin-left: 3px;
+  vertical-align: middle;
+}
+.month-badge--xmas { background: var(--sage); }
+
+/* ── Empty state ──────────────────────────────────────────────────────── */
+.remun-empty {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 64px 32px;
+  text-align: center;
+}
+.remun-empty-icon { opacity: 0.6; margin-bottom: 8px; }
+.remun-empty h3 { font-size: 18px; font-weight: 600; color: var(--gray-700); }
+.remun-empty p { font-size: 13px; color: var(--gray-400); max-width: 360px; }
+
+/* ── Name cell: clips text; hover shows a fixed-position portal tooltip ───── */
+td.remun-name-td {
+  overflow: hidden;
+  padding: 0;
+  vertical-align: middle;
+  cursor: default;
+}
+
+/* Normal clipped text inside the column */
+.remun-name-wrap {
+  display: flex;
+  align-items: center;
+  height: 50px;
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+/* Fixed-position tooltip rendered via React portal into document.body */
+.remun-name-tooltip {
+  position: fixed;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  background: #ffffff;
+  border: 1px solid var(--gray-300);
+  border-radius: 5px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+  padding: 7px 14px;
+  z-index: 9999;
+  pointer-events: none;
+  font-size: 12px;
+  color: var(--gray-800);
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+/* Monthly table: keep all cells nowrap to prevent row height from blowing up */
+.remun-monthly-table .remun-row td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Monthly name cells — same td class, but wrap height is auto (row uses padding not fixed height) */
+.remun-monthly-table td.remun-name-td .remun-name-wrap {
+  height: auto;
+  min-height: 40px;
+  padding: 10px 10px;
+}

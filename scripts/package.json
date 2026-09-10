@@ -1,0 +1,11 @@
+{
+  "name": "budget-solution-bootstrap",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.0"
+  },
+  "scripts": {
+    "bootstrap-users": "node bootstrap-users.mjs"
+  }
+}

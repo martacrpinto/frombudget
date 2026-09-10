@@ -1,0 +1,233 @@
+.usermgmt-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  /* No max-height here — the modal-body handles scroll */
+}
+
+/* Make the modal-body scrollable for user management */
+.usermgmt-modal-body {
+  overflow-y: auto;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-right: 4px;
+}
+
+/* Legend */
+.usermgmt-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.legend-item strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-800);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.legend-item p {
+  font-size: 11.5px;
+  color: var(--gray-500);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Role badges */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  flex-shrink: 0;
+  cursor: help;
+}
+
+.role-badge--admin {
+  background: var(--gray-900);
+  color: #ffffff;
+}
+
+.role-badge--approver {
+  background: var(--sage);
+  color: #ffffff;
+}
+
+.role-badge--off {
+  background: var(--gray-200);
+  color: var(--gray-400);
+  cursor: pointer;
+}
+
+.role-badge--off:hover {
+  background: var(--gray-300);
+  color: var(--gray-600);
+}
+
+.role-badge--admin,
+.role-badge--approver {
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+
+.role-badge--admin:hover,
+.role-badge--approver:hover {
+  opacity: 0.75;
+}
+
+/* User list */
+.usermgmt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.usermgmt-row-wrap {
+  border-bottom: 1px solid var(--gray-100);
+}
+.usermgmt-row-wrap:last-child { border-bottom: none; }
+
+.usermgmt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  transition: background var(--transition);
+}
+
+.usermgmt-row:hover { background: var(--gray-50); }
+
+/* Password edit row — below the main row */
+.usermgmt-pass-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 10px;
+  background: #fafaf8;
+  border-top: 1px dashed var(--gray-200);
+  flex-wrap: wrap;
+}
+
+.usermgmt-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--gray-200);
+  color: var(--gray-600);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.usermgmt-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.usermgmt-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-800);
+}
+
+.usermgmt-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.usermgmt-name-input {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.usermgmt-badges {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  align-items: center;
+  /* Fixed width so badges always align regardless of active/inactive state */
+  min-width: 52px;
+}
+
+.usermgmt-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 60px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.usermgmt-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--gray-400);
+  transition: all var(--transition);
+}
+
+.usermgmt-btn:hover { background: var(--gray-100); color: var(--gray-700); }
+.usermgmt-btn--danger:hover { background: var(--cost-bg); color: var(--cost); }
+
+/* Add form */
+.usermgmt-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.usermgmt-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1.5px dashed var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-500);
+  width: 100%;
+  transition: all var(--transition);
+  justify-content: center;
+}
+
+.usermgmt-add-btn:hover {
+  border-color: var(--gray-500);
+  color: var(--gray-700);
+  background: var(--gray-50);
+}

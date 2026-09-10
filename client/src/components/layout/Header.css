@@ -1,0 +1,229 @@
+.header {
+  height: var(--header-height);
+  background: #ffffff;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.header-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-section {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 16px;
+  font-style: italic;
+  color: var(--gray-900);
+  font-weight: 400;
+}
+
+.header-sep {
+  color: var(--gray-300);
+  font-size: 16px;
+}
+
+.header-page {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-600);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  color: var(--gray-400);
+  transition: all var(--transition);
+}
+
+.header-refresh-btn:hover {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.header-refresh-btn:active svg {
+  animation: spin 0.5s linear;
+}
+
+.save-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  transition: opacity var(--transition);
+}
+
+.save-status--saving { color: var(--gray-500); }
+.save-status--saved { color: var(--revenue); }
+.save-status--error { color: var(--cost); }
+
+.save-spinner {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--gray-300);
+  border-top-color: var(--gray-600);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.user-menu-wrapper {
+  position: relative;
+}
+
+.user-avatar-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--gray-900);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--transition), transform var(--transition);
+  overflow: hidden;
+  border: 2px solid transparent;
+}
+
+.user-avatar-btn:hover {
+  opacity: 0.85;
+  border-color: var(--gray-300);
+}
+
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-avatar-initials {
+  letter-spacing: 0.03em;
+}
+
+.user-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 220px;
+  background: #ffffff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 200;
+}
+
+.user-menu-header {
+  padding: 14px 16px 12px;
+}
+
+.user-menu-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+.user-menu-role {
+  font-size: 11px;
+  color: var(--gray-400);
+  margin-top: 2px;
+}
+
+.user-menu-divider {
+  height: 1px;
+  background: var(--gray-100);
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 12.5px;
+  color: var(--gray-700);
+  text-align: left;
+  transition: background var(--transition), color var(--transition);
+}
+
+.user-menu-item:hover {
+  background: var(--gray-50);
+}
+
+.user-menu-item--danger {
+  color: var(--cost);
+}
+
+.user-menu-item--danger:hover {
+  background: var(--cost-bg);
+}
+
+.user-menu-item--warning {
+  color: #92400e;
+}
+
+.user-menu-item--warning:hover {
+  background: #fffbeb;
+}
+
+/* Modal warning block */
+.modal-warning-block {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.modal-warning-icon {
+  color: #92400e;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.modal-warning-icon--red {
+  color: var(--cost);
+}
+
+.modal-warning-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-800);
+  line-height: 1.5;
+}
+
+.modal-reset-list {
+  margin: 8px 0 0 16px;
+  font-size: 12px;
+  color: var(--gray-600);
+  line-height: 1.8;
+}
+
