@@ -173,6 +173,30 @@
   margin-top: 8px;
 }
 
+.login-recovery-heading {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111;
+  text-align: center;
+  margin-bottom: -6px;
+}
+
+.login-recovery-copy {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #707070;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.login-recovery-success {
+  line-height: 1.5;
+  padding: 10px 12px;
+  background: #f0faf3;
+  border: 1px solid #ccebd5;
+  border-radius: 6px;
+}
+
 /* Selected user display */
 .login-user-selected {
   display: flex;

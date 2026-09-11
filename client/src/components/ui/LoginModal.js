@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { isSupabaseConfigured, requestPasswordReset } from '../../lib/supabase';
+import { isPasswordActionUrl, isSupabaseConfigured, requestPasswordReset, updatePassword, supabase } from '../../lib/supabase';
 import './LoginModal.css';
 
-export default function LoginModal() {
+export default function LoginModal({ forcePasswordAction = false, onPasswordActionFinished = () => {} }) {
   const { users, login } = useApp();
   const [email, setEmail] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -12,6 +12,10 @@ export default function LoginModal() {
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(() => forcePasswordAction || isPasswordActionUrl());
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordUpdated, setPasswordUpdated] = useState(false);
   const passwordRef = useRef(null);
 
   // Focus password input when step changes
@@ -20,6 +24,24 @@ export default function LoginModal() {
       setTimeout(() => passwordRef.current?.focus(), 80);
     }
   }, [step]);
+
+  // Supabase emits PASSWORD_RECOVERY when a reset link is opened. Invite links
+  // contain the same temporary session and are detected from the URL above.
+  useEffect(() => {
+    if (!supabase) return undefined;
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'USER_UPDATED') setRecoveryMode(true);
+      if (session?.user?.email) setEmail(current => current || session.user.email);
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user?.email) setEmail(current => current || data.session.user.email);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (forcePasswordAction) setRecoveryMode(true);
+  }, [forcePasswordAction]);
 
   const selectedUser = null;
 
@@ -59,6 +81,22 @@ export default function LoginModal() {
     finally { setLoading(false); }
   };
 
+  const handlePasswordUpdate = async () => {
+    if (newPassword.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (newPassword !== confirmPassword) { setError('Passwords do not match.'); return; }
+    setLoading(true); setError('');
+    try {
+      const { error: updateError } = await updatePassword(newPassword);
+      if (updateError) throw updateError;
+      setPasswordUpdated(true);
+      setNewPassword('');
+      setConfirmPassword('');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (e) {
+      setError(e?.message || 'Unable to set your password. Please request a new link.');
+    } finally { setLoading(false); }
+  };
+
   const handleBack = () => {
     setStep('select');
     setPassword('');
@@ -78,7 +116,23 @@ export default function LoginModal() {
         <div className="login-divider" />
         <div className="login-app-label">Budget System</div>
 
-        {isSupabaseConfigured ? (
+        {isSupabaseConfigured && recoveryMode && !passwordUpdated ? (
+          <div className="login-form" onKeyDown={e => e.key === 'Enter' && !loading && handlePasswordUpdate()}>
+            <div className="login-recovery-heading">Set your password</div>
+            <div className="login-recovery-copy">Choose a password to finish setting up your account.</div>
+            <label className="login-label">New password</label>
+            <input ref={passwordRef} type="password" className={`login-input ${error ? 'login-input--error' : ''}`} value={newPassword} onChange={e => { setNewPassword(e.target.value); setError(''); }} placeholder="At least 8 characters" autoComplete="new-password" autoFocus />
+            <label className="login-label">Confirm password</label>
+            <input type="password" className={`login-input ${error ? 'login-input--error' : ''}`} value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); setError(''); }} placeholder="Repeat your password" autoComplete="new-password" />
+            {error && <div className="login-error">{error}</div>}
+            <button className="login-btn" onClick={handlePasswordUpdate} disabled={!newPassword || !confirmPassword || loading}>{loading ? <span className="login-btn-spinner" /> : 'Save password'}</button>
+          </div>
+        ) : isSupabaseConfigured && passwordUpdated ? (
+          <div className="login-form">
+            <div className="login-success login-recovery-success">Password saved successfully. You can now sign in.</div>
+            <button className="login-btn" onClick={async () => { if (supabase) await supabase.auth.signOut(); setPasswordUpdated(false); setRecoveryMode(false); onPasswordActionFinished(); }}>Continue to sign in</button>
+          </div>
+        ) : isSupabaseConfigured ? (
           <div className="login-form" onKeyDown={e => e.key === 'Enter' && !loading && handleLogin()}>
             <label className="login-label">Email</label>
             <input className={`login-input ${error ? 'login-input--error' : ''}`} type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); setResetSent(false); }} placeholder="you@company.com" autoComplete="email" autoFocus />

@@ -20,6 +20,18 @@ export async function requestPasswordReset(email) {
   return supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/` });
 }
 
+export function isPasswordActionUrl() {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  const hash = window.location.hash;
+  return ['recovery', 'invite'].includes(params.get('type')) || /(?:^|[&#])type=(?:recovery|invite)(?:&|$)/.test(hash);
+}
+
+export async function updatePassword(password) {
+  if (!supabase) throw new Error('Supabase is not configured');
+  return supabase.auth.updateUser({ password });
+}
+
 /** Call the protected admin-users Edge Function. The function enforces the
  * administrator check server-side; no service-role key is ever shipped here. */
 export async function adminUsers(action, payload = {}) {
