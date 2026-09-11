@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import LoginModal from './components/ui/LoginModal';
 import Layout from './components/layout/Layout';
@@ -11,6 +11,10 @@ function AppInner() {
   const [passwordAction, setPasswordAction] = useState(isPasswordActionUrl);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [passwordChangeResolved, setPasswordChangeResolved] = useState(false);
+  const handlePasswordChanged = useCallback(() => {
+    setMustChangePassword(false);
+    setPasswordChangeResolved(true);
+  }, []);
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -47,10 +51,7 @@ function AppInner() {
           onPasswordActionFinished={() => setPasswordAction(false)}
         />
       ) : requiresPasswordChange ? (
-        <FirstLoginPasswordModal onPasswordChanged={() => {
-          setMustChangePassword(false);
-          setPasswordChangeResolved(true);
-        }} />
+        <FirstLoginPasswordModal onPasswordChanged={handlePasswordChanged} />
       ) : <Layout />}
       <NotificationStack />
     </>
