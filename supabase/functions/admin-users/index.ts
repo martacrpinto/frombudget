@@ -213,6 +213,26 @@ Deno.serve(async (req) => {
       return response(req, { success: true, mustChangePassword: true });
     }
 
+    if (action === "change-email") {
+      const profileId = String(body.profileId ?? body.userId ?? "");
+      const email = String(body.email ?? "").trim().toLowerCase();
+      if (!profileId) return response(req, { error: "profileId is required" }, 400);
+      if (!email || !email.includes("@")) return response(req, { error: "A valid email is required" }, 400);
+
+      const { data: profile, error } = await admin.from("profiles").select("auth_user_id").eq("id", profileId).single();
+      if (error || !profile.auth_user_id) return response(req, { error: "Profile has no login" }, 404);
+
+      // Admin updates are applied immediately. `email_confirm: true` prevents
+      // Supabase from starting an email-confirmation flow: credentials are
+      // communicated manually by the administrator.
+      const update = await admin.auth.admin.updateUserById(profile.auth_user_id, {
+        email,
+        email_confirm: true,
+      });
+      if (update.error) return response(req, { error: update.error.message }, 400);
+      return response(req, { success: true, email: update.data.user.email ?? email });
+    }
+
     if (action === "delete") {
       const profileId = String(body.profileId ?? "");
       const { data: role } = await admin.from("profile_roles").select("is_admin").eq("user_id", profileId).maybeSingle();

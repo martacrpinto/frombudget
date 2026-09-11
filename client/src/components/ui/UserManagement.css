@@ -265,3 +265,9 @@
   font-size: 11.5px;
   line-height: 1.4;
 }
+
+.usermgmt-email-label {
+  color: var(--gray-600, #6b706c);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
