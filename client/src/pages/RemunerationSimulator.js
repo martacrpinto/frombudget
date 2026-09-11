@@ -354,13 +354,15 @@ export default function RemunerationSimulator() {
         p_snapshot:{ years:result.years, fte_count:prepared.length },
       });
       if (recordError) throw recordError;
+      const savedRecord = Array.isArray(record) ? record[0] : record;
+      if (!savedRecord?.filename) throw new Error('The export history record was not created.');
       const { data:urlData, error:urlError } = await supabase.storage.from('exports').createSignedUrl(uploadedPath, 3600);
       if (urlError) throw urlError;
       const link = document.createElement('a');
-      link.href = urlData.signedUrl; link.download = record.filename; link.click();
+      link.href = urlData.signedUrl; link.download = savedRecord.filename; link.click();
       await loadExportHistory();
       setSaved();
-      addNotification('success', `Export saved: ${record.filename}`);
+      addNotification('success', `Export saved: ${savedRecord.filename}`);
     } catch (error) {
       if (uploadedPath) await supabase.storage.from('exports').remove([uploadedPath]);
       setSaveError();
