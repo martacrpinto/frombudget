@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Modal } from '../../pages/BudgetPage';
 import { usePermissions } from '../../hooks/usePermissions';
 import UserManagement from '../ui/UserManagement';
-import { supabase, uploadAvatar, removeAvatar } from '../../lib/supabase';
+import { uploadAvatar, removeAvatar, updatePassword } from '../../lib/supabase';
 import './Header.css';
 
 const PAGE_LABELS = {
@@ -22,6 +22,10 @@ export default function Header({ currentPage, onPageCleared, onRefresh }) {
   const [showClearModal, setShowClearModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showUserMgmt, setShowUserMgmt] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
+  const [passwordState, setPasswordState] = useState({ loading: false, error: '', success: '' });
 
   const menuRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -82,6 +86,36 @@ export default function Header({ currentPage, onPageCleared, onRefresh }) {
     } catch { addNotification('error', 'Failed to reset system.'); }
   };
 
+  const openPasswordModal = () => {
+    setNewPassword('');
+    setPasswordConfirmation('');
+    setPasswordState({ loading: false, error: '', success: '' });
+    setMenuOpen(false);
+    setShowPasswordModal(true);
+  };
+
+  const handlePasswordUpdate = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      setPasswordState({ loading: false, error: 'Password must be at least 8 characters.', success: '' });
+      return;
+    }
+    if (newPassword !== passwordConfirmation) {
+      setPasswordState({ loading: false, error: 'Passwords do not match.', success: '' });
+      return;
+    }
+    setPasswordState({ loading: true, error: '', success: '' });
+    try {
+      const { error } = await updatePassword(newPassword);
+      if (error) throw error;
+      setPasswordState({ loading: false, error: '', success: 'Your password has been updated.' });
+      setNewPassword('');
+      setPasswordConfirmation('');
+    } catch (error) {
+      setPasswordState({ loading: false, error: error?.message || 'Could not update your password.', success: '' });
+    }
+  };
+
   const saveLabel = { idle: null, saving: 'Saving...', saved: 'Saved', error: 'Error saving changes' }[saveStatus];
 
   return (
@@ -135,6 +169,13 @@ export default function Header({ currentPage, onPageCleared, onRefresh }) {
                     <path d="M1 11h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                   Upload Profile Picture
+                </button>
+                <button className="user-menu-item" onClick={openPasswordModal}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <rect x="2.5" y="6" width="9" height="6" rx="1" stroke="currentColor" strokeWidth="1.3"/>
+                    <path d="M4.5 6V4.5a2.5 2.5 0 0 1 5 0V6M7 8.5v1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                  </svg>
+                  Change Password
                 </button>
                 {currentUser?.profile_picture && (
                   <button className="user-menu-item user-menu-item--danger" onClick={handleRemovePicture}>
@@ -226,6 +267,43 @@ export default function Header({ currentPage, onPageCleared, onRefresh }) {
       )}
 
       {showUserMgmt && <UserManagement onClose={() => setShowUserMgmt(false)} />}
+
+      {showPasswordModal && (
+        <Modal title="Change Password" onClose={() => setShowPasswordModal(false)}>
+          <form className="password-form" onSubmit={handlePasswordUpdate}>
+            <p className="modal-hint password-form-intro">Set a new password for your account. It must be at least 8 characters.</p>
+            <label className="password-field">
+              <span>New password</span>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                autoFocus
+                disabled={passwordState.loading || !!passwordState.success}
+              />
+            </label>
+            <label className="password-field">
+              <span>Confirm new password</span>
+              <input
+                type="password"
+                value={passwordConfirmation}
+                onChange={e => setPasswordConfirmation(e.target.value)}
+                autoComplete="new-password"
+                disabled={passwordState.loading || !!passwordState.success}
+              />
+            </label>
+            {passwordState.error && <p className="modal-error password-feedback" role="alert">{passwordState.error}</p>}
+            {passwordState.success && <p className="password-success" role="status">{passwordState.success}</p>}
+            <div className="modal-actions">
+              <button type="button" className="modal-btn modal-btn--secondary" onClick={() => setShowPasswordModal(false)}>Close</button>
+              {!passwordState.success && <button type="submit" className="modal-btn modal-btn--primary" disabled={passwordState.loading}>
+                {passwordState.loading ? 'Updating...' : 'Update Password'}
+              </button>}
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {/* System Reset Modal */}
       {showResetModal && (
