@@ -5,6 +5,20 @@
   /* No max-height here — the modal-body handles scroll */
 }
 
+.usermgmt-credentials {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--sage, #78917a);
+  border-radius: var(--radius);
+  background: var(--gray-50);
+}
+.usermgmt-credentials strong { color: var(--gray-900); font-size: 13px; }
+.usermgmt-credentials p { margin: 0 0 4px; color: var(--gray-500); font-size: 11.5px; }
+.usermgmt-credentials div { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.usermgmt-credentials code { color: var(--gray-900); font-family: ui-monospace, SFMono-Regular, monospace; user-select: all; }
+
 /* Make the modal-body scrollable for user management */
 .usermgmt-modal-body {
   overflow-y: auto;

@@ -43,15 +43,39 @@ Deno.serve(async (req) => {
   const { data: authData, error: authError } = await admin.auth.getUser(bearer);
   if (authError || !authData.user) return response(req, { error: "Invalid session" }, 401);
 
+  let body: Record<string, unknown>;
+  try { body = await req.json(); } catch { return response(req, { error: "Invalid JSON body" }, 400); }
+  const action = String(body.action ?? "");
+
+  // First-login completion is intentionally available to the signed-in user
+  // without admin privileges. Both password and enforcement metadata are
+  // changed in one Auth Admin API request, so the flag cannot be cleared
+  // independently of the password update.
+  if (action === "complete-first-login") {
+    const password = String(body.password ?? "");
+    if (password.length < 8) return response(req, { error: "Password must have at least 8 characters" }, 400);
+    if (authData.user.app_metadata?.must_change_password !== true) {
+      return response(req, { error: "A first-login password change is not required" }, 409);
+    }
+    const update = await admin.auth.admin.updateUserById(authData.user.id, {
+      password,
+      app_metadata: {
+        ...(authData.user.app_metadata ?? {}),
+        must_change_password: false,
+      },
+    });
+    if (update.error) return response(req, { error: update.error.message }, 400);
+    return response(req, { success: true, mustChangePassword: false });
+  }
+  if (authData.user.app_metadata?.must_change_password === true) {
+    return response(req, { error: "Password change required before administrator actions" }, 403);
+  }
+
   const { data: actor } = await admin.from("profiles").select("id").eq("auth_user_id", authData.user.id).maybeSingle();
   const { data: actorRole } = actor
     ? await admin.from("profile_roles").select("is_admin").eq("user_id", actor.id).maybeSingle()
     : { data: null };
   if (!actor || !actorRole?.is_admin) return response(req, { error: "Administrator access required" }, 403);
-
-  let body: Record<string, unknown>;
-  try { body = await req.json(); } catch { return response(req, { error: "Invalid JSON body" }, 400); }
-  const action = String(body.action ?? "");
 
   try {
     if (action === "list") {
@@ -69,36 +93,80 @@ Deno.serve(async (req) => {
       })));
     }
 
-    if (action === "invite") {
+    // Kept under the existing action name for clients that already call
+    // `invite`; this deliberately creates the account directly and never
+    // calls inviteUserByEmail (the administrator supplies the temporary
+    // password in the request).
+    if (action === "invite" || action === "create" || action === "create-with-temp-password") {
       const email = String(body.email ?? "").trim().toLowerCase();
       const name = String(body.name ?? "").trim();
+      const temporaryPassword = String(body.password ?? body.temporaryPassword ?? "");
       let profileId = String(body.profileId ?? "").trim();
       if (!email || !email.includes("@")) return response(req, { error: "A valid email is required" }, 400);
+      if (temporaryPassword.length < 8) return response(req, { error: "A temporary password with at least 8 characters is required" }, 400);
 
+      let createdProfile = false;
       if (!profileId) {
         if (!name) return response(req, { error: "Name is required for a new profile" }, 400);
         profileId = legacyIdFor(name);
         const { error } = await admin.from("profiles").insert({ id: profileId, name, initials: initialsFor(name) });
         if (error) throw error;
-        await admin.from("profile_roles").insert({ user_id: profileId, is_admin: false, is_approver: false });
+        createdProfile = true;
+        const { error: roleError } = await admin.from("profile_roles").insert({ user_id: profileId, is_admin: false, is_approver: false });
+        if (roleError) {
+          await admin.from("profiles").delete().eq("id", profileId);
+          throw roleError;
+        }
       }
 
       const { data: profile, error: profileError } = await admin.from("profiles").select("id,name,auth_user_id").eq("id", profileId).single();
       if (profileError) throw profileError;
       if (profile.auth_user_id) return response(req, { error: "Profile already has a login" }, 409);
 
-      const redirectTo = typeof body.redirectTo === "string" ? body.redirectTo : undefined;
-      const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-        redirectTo,
-        data: { name: profile.name, legacy_id: profile.id },
+      const { data, error } = await admin.auth.admin.createUser({
+        email,
+        password: temporaryPassword,
+        email_confirm: true,
+        user_metadata: { name: profile.name, legacy_id: profile.id },
+        // Enforcement state belongs in app_metadata: users can edit
+        // user_metadata from the browser, but not app_metadata.
+        app_metadata: { name: profile.name, legacy_id: profile.id, must_change_password: true },
       });
-      if (error) throw error;
+      if (error) {
+        if (createdProfile) {
+          await admin.from("profile_roles").delete().eq("user_id", profile.id);
+          await admin.from("profiles").delete().eq("id", profile.id);
+        }
+        throw error;
+      }
       const { error: linkError } = await admin.from("profiles").update({ auth_user_id: data.user.id }).eq("id", profile.id);
       if (linkError) {
         await admin.auth.admin.deleteUser(data.user.id);
+        if (createdProfile) {
+          await admin.from("profile_roles").delete().eq("user_id", profile.id);
+          await admin.from("profiles").delete().eq("id", profile.id);
+        }
         throw linkError;
       }
-      return response(req, { success: true, profileId: profile.id, email });
+      const createdUser = {
+        id: profile.id,
+        name: profile.name,
+        email,
+        initials: initialsFor(profile.name),
+        auth_user_id: data.user.id,
+        is_admin: false,
+        is_approver: false,
+      };
+      return response(req, {
+        success: true,
+        profileId: profile.id,
+        email,
+        mustChangePassword: true,
+        // Keep both shapes for existing admin UI clients: some expect data,
+        // while older clients unwrap a nested user.data response.
+        data: createdUser,
+        user: { data: createdUser },
+      });
     }
 
     if (action === "update") {
@@ -127,14 +195,22 @@ Deno.serve(async (req) => {
     }
 
     if (action === "set-password") {
-      const profileId = String(body.profileId ?? "");
+      const profileId = String(body.profileId ?? body.userId ?? "");
       const password = String(body.password ?? "");
       if (password.length < 8) return response(req, { error: "Password must have at least 8 characters" }, 400);
       const { data: profile, error } = await admin.from("profiles").select("auth_user_id").eq("id", profileId).single();
       if (error || !profile.auth_user_id) return response(req, { error: "Profile has no login" }, 404);
-      const update = await admin.auth.admin.updateUserById(profile.auth_user_id, { password });
+      const existing = await admin.auth.admin.getUserById(profile.auth_user_id);
+      if (existing.error || !existing.data.user) throw existing.error ?? new Error("Unable to load user");
+      const update = await admin.auth.admin.updateUserById(profile.auth_user_id, {
+        password,
+        app_metadata: {
+          ...(existing.data.user.app_metadata ?? {}),
+          must_change_password: true,
+        },
+      });
       if (update.error) throw update.error;
-      return response(req, { success: true });
+      return response(req, { success: true, mustChangePassword: true });
     }
 
     if (action === "delete") {
@@ -159,4 +235,3 @@ Deno.serve(async (req) => {
     return response(req, { error: message }, 500);
   }
 });
-

@@ -18,7 +18,16 @@ export default function UserManagement({ onClose }) {
   const [newName,         setNewName]         = useState('');
   const [newEmail,        setNewEmail]        = useState('');
   const [showAddForm,     setShowAddForm]     = useState(false);
+  const [temporaryCredentials, setTemporaryCredentials] = useState(null);
+  const [credentialsCopied, setCredentialsCopied] = useState(false);
   const [saving,          setSaving]          = useState(false);
+
+  const generateTemporaryPassword = () => {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+    const values = new Uint32Array(16);
+    window.crypto.getRandomValues(values);
+    return Array.from(values, value => alphabet[value % alphabet.length]).join('');
+  };
 
   const load = () => {
     setLoading(true);
@@ -34,7 +43,7 @@ export default function UserManagement({ onClose }) {
     if (!editName.trim()) return;
     setSaving(true);
     try {
-      const result = await adminUsers('update', { userId, name: editName.trim() });
+      const result = await adminUsers('update', { profileId: userId, name: editName.trim() });
       const updated = result.user || result;
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updated } : u));
       // ctxUsers updated via WS 'user_renamed' event
@@ -51,7 +60,7 @@ export default function UserManagement({ onClose }) {
         is_admin: field === 'is_admin' ? !currentVal : user.is_admin,
         is_approver: field === 'is_approver' ? !currentVal : user.is_approver,
       };
-      await adminUsers('update', { userId, ...newRoles });
+      await adminUsers('update', { profileId: userId, isAdmin: newRoles.is_admin, isApprover: newRoles.is_approver });
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...newRoles } : u));
     } catch (e) { addNotification('error', e.response?.data?.error || 'Failed to update role.'); }
   };
@@ -60,15 +69,18 @@ export default function UserManagement({ onClose }) {
     if (!newName.trim() || !newEmail.trim()) return;
     setSaving(true);
     try {
-      const result = await adminUsers('invite', { name: newName.trim(), email: newEmail.trim() });
-      const res = result.user || result;
+      const temporaryPassword = generateTemporaryPassword();
+      const result = await adminUsers('create-with-temp-password', { name: newName.trim(), email: newEmail.trim(), password: temporaryPassword });
+      const createdUser = result.user?.data || result.user || result.data?.user || result.data || result;
       // Add to local usermgmt list
-      setUsers(prev => prev.find(u => u.id === res.data.id) ? prev : [...prev, res.data]);
+      setUsers(prev => createdUser?.id && prev.find(u => u.id === createdUser.id) ? prev : [...prev, createdUser]);
       // DO NOT call setCtxUsers here — the WS 'user_added' event handles it
       setNewName('');
       setNewEmail('');
       setShowAddForm(false);
-      addNotification('success', `"${res.data.name}" added to the system.`);
+      setCredentialsCopied(false);
+      setTemporaryCredentials({ name: createdUser?.name || newName.trim(), email: createdUser?.email || newEmail.trim(), password: temporaryPassword });
+      addNotification('success', `"${createdUser?.name || newName.trim()}" added to the system.`);
     } catch (e) { addNotification('error', e.response?.data?.error || 'Failed to add user.'); }
     finally { setSaving(false); }
   };
@@ -78,7 +90,7 @@ export default function UserManagement({ onClose }) {
     setSaving(true);
     try {
       const newPass = editPass.trim();
-      await adminUsers('set-password', { userId, password: newPass });
+      await adminUsers('set-password', { profileId: userId, password: newPass });
       setEditingPassId(null);
       setEditPass('');
       addNotification('success', 'Password updated successfully.');
@@ -89,7 +101,7 @@ export default function UserManagement({ onClose }) {
   const handleDelete = async (user) => {
     if (!window.confirm(`Delete "${user.name}"? This cannot be undone.`)) return;
     try {
-      await adminUsers('delete', { userId: user.id });
+      await adminUsers('delete', { profileId: user.id });
       setUsers(prev => prev.filter(u => u.id !== user.id));
       // ctxUsers updated via WS 'user_deleted' event
       addNotification('success', `"${user.name}" removed.`);
@@ -99,6 +111,22 @@ export default function UserManagement({ onClose }) {
   return (
     <Modal title="Manage Budget Pages & Users" onClose={onClose} wide>
       <div className="usermgmt-panel">
+
+        {temporaryCredentials && (
+          <div className="usermgmt-credentials" role="status">
+            <strong>Temporary login created</strong>
+            <p>Share these credentials now. The password will not be shown again.</p>
+            <div><span>Username</span><code>{temporaryCredentials.email}</code></div>
+            <div><span>Password</span><code>{temporaryCredentials.password}</code></div>
+            <div className="modal-actions" style={{paddingTop: 4}}>
+              <button className="modal-btn modal-btn--primary" onClick={async () => {
+                await navigator.clipboard?.writeText(`${temporaryCredentials.email}\n${temporaryCredentials.password}`);
+                setCredentialsCopied(true);
+              }}>{credentialsCopied ? 'Copied' : 'Copy credentials'}</button>
+              <button className="modal-btn modal-btn--secondary" onClick={() => { setTemporaryCredentials(null); setCredentialsCopied(false); }}>Close</button>
+            </div>
+          </div>
+        )}
 
         {/* Legend */}
         <div className="usermgmt-legend">
@@ -265,11 +293,11 @@ export default function UserManagement({ onClose }) {
                 value={newEmail}
                 onChange={e => setNewEmail(e.target.value)}
               />
-              <p className="modal-hint">An invitation email will be sent. The user sets their own password securely.</p>
+              <p className="modal-hint">A temporary password will be generated. Give it to the user; they must change it on first login.</p>
               <div className="modal-actions" style={{paddingTop:0}}>
                 <button className="modal-btn modal-btn--secondary" onClick={() => { setShowAddForm(false); setNewName(''); setNewEmail(''); }}>Cancel</button>
                 <button className="modal-btn modal-btn--primary" onClick={handleAdd} disabled={saving || !newName.trim() || !newEmail.trim()}>
-                  {saving ? 'Sending invite...' : 'Invite User'}
+                  {saving ? 'Creating user...' : 'Create User'}
                 </button>
               </div>
             </div>
