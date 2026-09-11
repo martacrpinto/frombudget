@@ -27,10 +27,18 @@ export default function FirstLoginPasswordModal({ onPasswordChanged }) {
       const { data, error: functionError } = await supabase.functions.invoke('admin-users', {
         body: { action: 'complete-first-login', password },
       });
-      if (functionError) throw functionError;
-      if (data?.error) throw new Error(data.error);
-      const { error: refreshError } = await supabase.auth.refreshSession();
+      const functionFailure = functionError || (data?.error ? new Error(data.error) : null);
+      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+
+      // The Auth update can succeed even if the Edge Function response is
+      // interrupted. Trust the refreshed server state before showing an error.
+      if (functionFailure && (refreshError || refreshed.session?.user?.app_metadata?.must_change_password !== false)) {
+        throw functionFailure;
+      }
       if (refreshError) throw refreshError;
+      if (refreshed.session?.user?.app_metadata?.must_change_password !== false) {
+        throw new Error('Could not confirm password update.');
+      }
       setPassword('');
       setConfirmation('');
       onPasswordChanged?.();

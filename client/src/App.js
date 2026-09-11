@@ -10,22 +10,33 @@ function AppInner() {
   const { currentUser } = useApp();
   const [passwordAction, setPasswordAction] = useState(isPasswordActionUrl);
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [passwordChangeResolved, setPasswordChangeResolved] = useState(false);
 
   useEffect(() => {
     if (!supabase) return undefined;
+    let alive = true;
     const hydratePasswordFlag = async () => {
       const { data } = await supabase.auth.getSession();
-      setMustChangePassword(Boolean(data.session?.user?.app_metadata?.must_change_password));
+      let session = data.session;
+      if (session?.user?.app_metadata?.must_change_password === true) {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        session = refreshed.session || session;
+      }
+      if (alive) setMustChangePassword(Boolean(session?.user?.app_metadata?.must_change_password));
     };
     hydratePasswordFlag();
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') setPasswordAction(true);
       setMustChangePassword(Boolean(session?.user?.app_metadata?.must_change_password));
     });
-    return () => data.subscription.unsubscribe();
+    return () => {
+      alive = false;
+      data.subscription.unsubscribe();
+    };
   }, []);
 
-  const profileRequiresPassword = Boolean(currentUser?.must_change_password || currentUser?.mustChangePassword);
+  const profileRequiresPassword = !passwordChangeResolved
+    && Boolean(currentUser?.must_change_password || currentUser?.mustChangePassword);
   const requiresPasswordChange = mustChangePassword || profileRequiresPassword;
 
   return (
@@ -36,7 +47,10 @@ function AppInner() {
           onPasswordActionFinished={() => setPasswordAction(false)}
         />
       ) : requiresPasswordChange ? (
-        <FirstLoginPasswordModal onPasswordChanged={() => setMustChangePassword(false)} />
+        <FirstLoginPasswordModal onPasswordChanged={() => {
+          setMustChangePassword(false);
+          setPasswordChangeResolved(true);
+        }} />
       ) : <Layout />}
       <NotificationStack />
     </>
