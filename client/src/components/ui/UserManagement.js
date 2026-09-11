@@ -15,6 +15,8 @@ export default function UserManagement({ onClose }) {
   const [editName,        setEditName]        = useState('');
   const [editingPassId,   setEditingPassId]   = useState(null);
   const [editPass,        setEditPass]        = useState('');
+  const [setupLoginId,    setSetupLoginId]    = useState(null);
+  const [setupEmail,      setSetupEmail]      = useState('');
   const [newName,         setNewName]         = useState('');
   const [newEmail,        setNewEmail]        = useState('');
   const [showAddForm,     setShowAddForm]     = useState(false);
@@ -83,6 +85,32 @@ export default function UserManagement({ onClose }) {
       addNotification('success', `"${createdUser?.name || newName.trim()}" added to the system.`);
     } catch (e) { addNotification('error', e.response?.data?.error || 'Failed to add user.'); }
     finally { setSaving(false); }
+  };
+
+  const handleSetupLogin = async (user) => {
+    if (!setupEmail.trim()) return;
+    setSaving(true);
+    try {
+      const temporaryPassword = generateTemporaryPassword();
+      const result = await adminUsers('create-with-temp-password', {
+        profileId: user.id,
+        name: user.name,
+        email: setupEmail.trim(),
+        password: temporaryPassword,
+      });
+      const linkedUser = result.user?.data || result.user || result.data?.user || result.data || result;
+      const email = linkedUser?.email || setupEmail.trim().toLowerCase();
+      setUsers(prev => prev.map(item => item.id === user.id ? { ...item, ...linkedUser, email } : item));
+      setSetupLoginId(null);
+      setSetupEmail('');
+      setCredentialsCopied(false);
+      setTemporaryCredentials({ name: user.name, email, password: temporaryPassword });
+      addNotification('success', `Login created for "${user.name}".`);
+    } catch (e) {
+      addNotification('error', e?.message || 'Failed to create login.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleChangePassword = async (userId) => {
@@ -186,7 +214,9 @@ export default function UserManagement({ onClose }) {
                     ) : (
                       <div>
                         <span className="usermgmt-name">{user.name}</span>
-                        {user.email && <div style={{fontSize:11,color:'var(--gray-500)',marginTop:2}}>{user.email}</div>}
+                        {user.email
+                          ? <div style={{fontSize:11,color:'var(--gray-500)',marginTop:2}}>{user.email}</div>
+                          : <div className="usermgmt-no-login">No email / login</div>}
                       </div>
                     )}
                   </div>
@@ -216,16 +246,24 @@ export default function UserManagement({ onClose }) {
                           <path d="M9.5 2l1.5 1.5-7 7H2.5V9L9.5 2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
                         </svg>
                       </button>
-                      {/* Change password — never read or display the current password */}
-                      <button className="usermgmt-btn"
-                        onClick={() => { setEditingPassId(user.id); setEditPass(''); setEditingId(null); }}
-                        title="Change password">
-                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                          <rect x="2.5" y="5.5" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                          <path d="M4.5 5.5V4a2 2 0 014 0v1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                          <circle cx="6.5" cy="8.5" r="1" fill="currentColor"/>
-                        </svg>
-                      </button>
+                      {user.email ? (
+                        /* Change password — never read or display the current password */
+                        <button className="usermgmt-btn"
+                          onClick={() => { setEditingPassId(user.id); setEditPass(''); setEditingId(null); setSetupLoginId(null); }}
+                          title="Issue a new temporary password">
+                          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                            <rect x="2.5" y="5.5" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                            <path d="M4.5 5.5V4a2 2 0 014 0v1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                            <circle cx="6.5" cy="8.5" r="1" fill="currentColor"/>
+                          </svg>
+                        </button>
+                      ) : (
+                        <button className="usermgmt-btn usermgmt-btn--setup"
+                          onClick={() => { setSetupLoginId(user.id); setSetupEmail(''); setEditingId(null); setEditingPassId(null); }}
+                          title="Set up email and login">
+                          @
+                        </button>
+                      )}
                       {/* Delete */}
                       <button
                         className={`usermgmt-btn ${user.is_admin ? '' : 'usermgmt-btn--danger'}`}
@@ -266,6 +304,35 @@ export default function UserManagement({ onClose }) {
                     <button className="modal-btn modal-btn--secondary"
                       style={{padding:'5px 10px',fontSize:12}}
                       onClick={() => { setEditingPassId(null); setEditPass(''); }}>
+                      ✕
+                    </button>
+                  </div>
+                )}
+                {setupLoginId === user.id && (
+                  <div className="usermgmt-pass-row">
+                    <span style={{fontSize:11.5,color:'var(--gray-500)',whiteSpace:'nowrap'}}>
+                      Email for <strong>{user.name}</strong>:
+                    </span>
+                    <input
+                      type="email"
+                      className="modal-input usermgmt-name-input"
+                      value={setupEmail}
+                      onChange={e => setSetupEmail(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleSetupLogin(user);
+                        if (e.key === 'Escape') { setSetupLoginId(null); setSetupEmail(''); }
+                      }}
+                      placeholder="name@company.com"
+                      autoFocus
+                    />
+                    <button className="modal-btn modal-btn--primary"
+                      style={{padding:'5px 10px',fontSize:12,whiteSpace:'nowrap'}}
+                      onClick={() => handleSetupLogin(user)} disabled={saving || !setupEmail.trim()}>
+                      {saving ? 'Creating...' : 'Set up login'}
+                    </button>
+                    <button className="modal-btn modal-btn--secondary"
+                      style={{padding:'5px 10px',fontSize:12}}
+                      onClick={() => { setSetupLoginId(null); setSetupEmail(''); }}>
                       ✕
                     </button>
                   </div>

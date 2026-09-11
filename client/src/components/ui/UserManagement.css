@@ -245,3 +245,16 @@
   color: var(--gray-700);
   background: var(--gray-50);
 }
+.usermgmt-no-login {
+  margin-top: 2px;
+  color: var(--cost, #a54242);
+  font-size: 11px;
+}
+
+.usermgmt-btn--setup {
+  width: auto;
+  min-width: 26px;
+  padding: 0 7px;
+  color: var(--sage, #78917a);
+  font-weight: 700;
+}
