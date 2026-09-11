@@ -3,6 +3,14 @@ import ReactDOM from 'react-dom';
 import { useApp } from '../context/AppContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from './BudgetPage';
+import { supabase } from '../lib/supabase';
+import { generateRemunerationWorkbook } from '../lib/exportRemunerationWorkbook';
+import {
+  REMUNERATION_MONTHS,
+  calculateMonthlyRemuneration,
+  calculateRemuneration,
+  normalizeEntryMonth,
+} from '../lib/remunerationCalculations';
 import './RemunerationSimulator.css';
 
 // ─── NameCell: read-only td — clips text, shows portal tooltip on hover ──────
@@ -123,87 +131,13 @@ const ROLES = [
   'Director', 'General Director', 'CEO',
 ];
 
-const MONTHS_FULL = [
-  'January','February','March','April','May','June',
-  'July','August','September','October','November','December'
-];
-const MONTHS_S = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_FULL = REMUNERATION_MONTHS;
+const MONTHS_S = REMUNERATION_MONTHS.map(month => month.slice(0, 3));
 
 // ─── Calculation Engine ───────────────────────────────────────────────────────
 
-function calcFTE(fte, cfg) {
-  const annual = parseFloat(fte.annual_base_salary) || 0;
-  const mealDay = parseFloat(fte.meal_allowance_day) || 0;
-  const idxPct = parseFloat(fte.indexation_pct) || 0;
-  const incPct = parseFloat(fte.increase_pct) || 0;
-  const n = cfg.monthly_payments || 14;
-
-  // Base
-  const base_annual = annual;
-  const base_monthly = base_annual / n;
-  const iht_base = base_annual * cfg.iht_rate;
-  const iht_base_monthly = iht_base / n;
-  const base_total_annual = base_annual + iht_base;
-  const base_total_monthly = base_total_annual / n;
-
-  // Meal
-  const annual_meal = mealDay * cfg.meal_allowance_days;
-
-  // After Indexation
-  const idx_annual = base_annual * (1 + idxPct / 100);
-  const idx_monthly = idx_annual / n;
-  const iht_idx = idx_annual * cfg.iht_rate;
-  const iht_idx_monthly = iht_idx / n;
-  const idx_total_annual = idx_annual + iht_idx;
-  const idx_total_monthly = idx_total_annual / n;
-
-  // After Increase (applied on top of indexed salary)
-  const final_annual = idx_annual * (1 + incPct / 100);
-  const final_monthly = final_annual / n;
-  const iht_final = final_annual * cfg.iht_rate;
-  const iht_final_monthly = iht_final / n;
-  const final_total_annual = final_annual + iht_final;
-  const final_total_monthly = final_total_annual / n;
-
-  // Total employer cost
-  const total_annual_employer = final_total_annual + annual_meal;
-
-  return {
-    base_annual, base_monthly,
-    iht_base, iht_base_monthly,
-    base_total_annual, base_total_monthly,
-    annual_meal,
-    idx_annual, idx_monthly,
-    iht_idx, iht_idx_monthly,
-    idx_total_annual, idx_total_monthly,
-    final_annual, final_monthly,
-    iht_final, iht_final_monthly,
-    final_total_annual, final_total_monthly,
-    total_annual_employer,
-  };
-}
-
 function calcMonthly(fte, cfg) {
-  const c = calcFTE(fte, cfg);
-  const n = cfg.monthly_payments || 14;
-  const reg_salary = c.final_monthly;        // regular monthly final salary
-  const meal_month = c.annual_meal / 12;
-  const iht_month = c.iht_final / 12;
-
-  return MONTHS_FULL.map((_, i) => {
-    const m = i + 1;
-    let salary = reg_salary;
-    if (m === cfg.holiday_allowance_month) salary += reg_salary;
-    if (m === cfg.christmas_allowance_month) salary += reg_salary;
-    return {
-      salary,
-      meal: meal_month,
-      iht: iht_month,
-      total: salary + meal_month + iht_month,
-      isHoliday: m === cfg.holiday_allowance_month,
-      isChristmas: m === cfg.christmas_allowance_month,
-    };
-  });
+  return calculateMonthlyRemuneration(fte, cfg);
 }
 
 // ─── Format helpers ───────────────────────────────────────────────────────────
@@ -282,6 +216,9 @@ export default function RemunerationSimulator() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportHistory, setExportHistory] = useState([]);
+  const [showExportHistory, setShowExportHistory] = useState(false);
 
   const saveTimers = useRef({});
 
@@ -321,6 +258,13 @@ export default function RemunerationSimulator() {
   }, [currentUserId, targetUserId, selectedYear, isAllView, perms.isAdmin, API]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const loadExportHistory = useCallback(async () => {
+    const { data, error } = await supabase.from('export_history').select('*').eq('export_mode','remun').order('timestamp', { ascending:false }).limit(20);
+    if (!error) setExportHistory(data || []);
+  }, []);
+
+  useEffect(() => { if (currentUserId) loadExportHistory(); }, [currentUserId, loadExportHistory]);
 
   const queueSaveFTE = useCallback((fteId, field, value) => {
     if (!canEdit) return;
@@ -386,10 +330,56 @@ export default function RemunerationSimulator() {
     } catch { addNotification('error', 'Failed to save config.'); }
   };
 
+  const handleRemunerationExport = async () => {
+    if (exporting || !currentUserId) return;
+    setExporting(true);
+    setSaving();
+    let uploadedPath = '';
+    try {
+      const { data: payload, error: dataError } = await supabase.rpc('get_remuneration_export_data');
+      if (dataError) throw dataError;
+      const rows = payload?.ftes || [];
+      const configs = new Map((payload?.configs || []).map(item => [item.user_id, item]));
+      const prepared = rows.map(fte => {
+        const rowCfg = configs.get(fte.user_id) || cfg;
+        return { ...fte, calculated:calculateRemuneration(fte, rowCfg), monthly:calculateMonthlyRemuneration(fte, rowCfg) };
+      });
+      const result = await generateRemunerationWorkbook(prepared);
+      uploadedPath = `remun/${currentUserId}/${crypto.randomUUID()}.xlsx`;
+      const { error: uploadError } = await supabase.storage.from('exports').upload(uploadedPath, result.blob, { contentType:result.blob.type, upsert:false });
+      if (uploadError) throw uploadError;
+      const { data: record, error: recordError } = await supabase.rpc('register_remuneration_export', {
+        p_filepath:uploadedPath,
+        p_year:Math.max(...result.years),
+        p_snapshot:{ years:result.years, fte_count:prepared.length },
+      });
+      if (recordError) throw recordError;
+      const { data:urlData, error:urlError } = await supabase.storage.from('exports').createSignedUrl(uploadedPath, 3600);
+      if (urlError) throw urlError;
+      const link = document.createElement('a');
+      link.href = urlData.signedUrl; link.download = record.filename; link.click();
+      await loadExportHistory();
+      setSaved();
+      addNotification('success', `Export saved: ${record.filename}`);
+    } catch (error) {
+      if (uploadedPath) await supabase.storage.from('exports').remove([uploadedPath]);
+      setSaveError();
+      addNotification('error', error?.message || 'Failed to export remuneration.');
+    } finally { setExporting(false); }
+  };
+
+  const handleExportDownload = async record => {
+    try {
+      const { data, error } = await supabase.storage.from('exports').createSignedUrl(record.filepath, 3600);
+      if (error) throw error;
+      const link = document.createElement('a'); link.href=data.signedUrl; link.download=record.filename; link.click();
+    } catch { addNotification('error', 'Failed to download export.'); }
+  };
+
   // In All view, use allFtes; otherwise use own ftes
   const activeFtes = isAllView ? allFtes : ftes;
 
-  const computed = useMemo(() => activeFtes.map(f => ({ id: f.id, ...calcFTE(f, cfg) })), [activeFtes, cfg]);
+  const computed = useMemo(() => activeFtes.map(f => ({ id: f.id, ...calculateRemuneration(f, cfg) })), [activeFtes, cfg]);
   const computedMap = useMemo(() => {
     const m = {}; computed.forEach(c => { m[c.id] = c; }); return m;
   }, [computed]);
@@ -535,9 +525,51 @@ export default function RemunerationSimulator() {
         </>
       )}
 
+      <RemunerationExport
+        exporting={exporting}
+        history={exportHistory}
+        showHistory={showExportHistory}
+        onToggleHistory={() => setShowExportHistory(value => !value)}
+        onExport={handleRemunerationExport}
+        onDownload={handleExportDownload}
+      />
+
       {canEdit && showNewModal && <NewFTEModal current={ftes.length} onClose={() => setShowNewModal(false)} onAdd={handleAddFTEs} />}
       {canEdit && showResetModal && <ResetModal onClose={() => setShowResetModal(false)} onConfirm={handleReset} />}
       {showConfigModal && <ConfigModal cfg={cfg} onClose={() => setShowConfigModal(false)} onSave={handleSaveConfig} />}
+    </div>
+  );
+}
+
+function RemunerationExport({ exporting, history, showHistory, onToggleHistory, onExport, onDownload }) {
+  return (
+    <div className="remun-section remun-export-section">
+      <div className="remun-section-header">
+        <div>
+          <h2 className="remun-section-title">Export to Excel</h2>
+          <span className="remun-section-note">Consolidated remuneration for all users and all years</span>
+        </div>
+        <div className="remun-export-actions">
+          {history.length > 0 && <button className="remun-btn remun-btn--ghost" onClick={onToggleHistory}>History ({history.length})</button>}
+          <button className="remun-btn remun-btn--primary" onClick={onExport} disabled={exporting}>{exporting ? 'Exporting...' : 'Export All Years'}</button>
+        </div>
+      </div>
+      {showHistory && history.length > 0 && (
+        <div className="remun-export-history">
+          <table className="remun-table">
+            <thead><tr><th>Version</th><th>Filename</th><th>Date</th><th>Exported by</th><th /></tr></thead>
+            <tbody>{history.map(record => (
+              <tr key={record.id}>
+                <td>v{String(record.version).padStart(3,'0')}</td>
+                <td title={record.filename}>{record.filename}</td>
+                <td>{new Date(record.timestamp).toLocaleDateString('en-GB')}</td>
+                <td>{record.exported_by_name}</td>
+                <td><button className="remun-btn remun-btn--ghost" onClick={() => onDownload(record)}>Download</button></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -791,6 +823,7 @@ function MainTable({ ftes, cfg, computedMap, onFieldChange, onRemove, readOnly =
             <col style={{width:32}} />   {/* # */}
             <col style={{width:130}} />  {/* Role */}
             <col style={{width:120}} />  {/* Name (collaborator) */}
+            <col style={{width:92}} />   {/* Entry month */}
             <col style={{width:92}} />   {/* Allow/Day */}
             <col style={{width:100}} />  {/* Annual Allow */}
             <col style={{width:100}} />  {/* Annual Salary */}
@@ -807,7 +840,7 @@ function MainTable({ ftes, cfg, computedMap, onFieldChange, onRemove, readOnly =
           <thead>
             {/* Group header */}
             <tr className="remun-group-header">
-              <th colSpan={3} className="group-cell group-identity" />
+              <th colSpan={4} className="group-cell group-identity" />
               <th colSpan={2} className="group-cell group-meal">Meal Allowance</th>
               <th colSpan={3} className="group-cell group-base">Base Salary</th>
               <th colSpan={5} className="group-cell group-inc">After Increase</th>
@@ -819,6 +852,7 @@ function MainTable({ ftes, cfg, computedMap, onFieldChange, onRemove, readOnly =
               <th style={{textAlign:'center'}}>#</th>
               <th style={{textAlign:'left'}}>Role</th>
               <th style={{textAlign:'left'}}>Name</th>
+              <th style={{textAlign:'left'}}>Entry month</th>
               <th style={{textAlign:'right'}}>Allow. / Day</th>
               <th style={{textAlign:'right'}}>Annual Allow.</th>
               <th style={{textAlign:'right'}}>Annual Salary</th>
@@ -842,7 +876,7 @@ function MainTable({ ftes, cfg, computedMap, onFieldChange, onRemove, readOnly =
           <tfoot>
             <tr className="remun-total-row">
               {/* # + Role + Name merged */}
-              <td colSpan={3} style={{textAlign:'left', paddingLeft:12, fontSize:10, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--gray-400)'}}>Total Team</td>
+              <td colSpan={4} style={{textAlign:'left', paddingLeft:12, fontSize:10, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--gray-400)'}}>Total Team</td>
               {/* Meal Allow/Day — empty, start of Meal section */}
               <td style={{borderLeft:'2px solid #1a5c32'}} />
               {/* Annual Meal */}
@@ -909,6 +943,15 @@ function FTERow({ fte, idx, c, cfg, onChange, onRemove, readOnly = false }) {
           onChange={v => onChange(fte.id, 'collaborator_name', v)}
         />
       )}
+
+      {/* Entry month: null means the full year */}
+      <td style={INPUT_TD}>
+        {readOnly ? (
+          <span className="remun-entry-month-readonly">{formatEntryMonth(fte.entry_month)}</span>
+        ) : (
+          <EntryMonthSelect value={fte.entry_month} onChange={v => onChange(fte.id, 'entry_month', v)} />
+        )}
+      </td>
 
       {/* Meal / Day */}
       <td style={INPUT_TD}>
@@ -1007,7 +1050,7 @@ function MonthlyOverview({ ftes, cfg, monthly }) {
           <colgroup>
             <col style={{width:130}} /> {/* Role */}
             <col style={{width:120}} /> {/* Name */}
-            {MONTHS_S.map((_, i) => <col key={i} style={{width:82}} />)} {/* 12 months */}
+            {MONTHS_S.map((_, i) => <col key={i} style={{width:82}} />)}
             <col style={{width:100}} /> {/* Annual Total */}
           </colgroup>
           <thead>
@@ -1077,6 +1120,26 @@ function MonthlyOverview({ ftes, cfg, monthly }) {
 }
 
 // ─── Input Components ─────────────────────────────────────────────────────────
+
+function formatEntryMonth(value) {
+  const month = normalizeEntryMonth(value);
+  return month === null ? 'All year' : MONTHS_FULL[month - 1];
+}
+
+function EntryMonthSelect({ value, onChange }) {
+  const normalized = normalizeEntryMonth(value);
+  return (
+    <select
+      className="remun-select remun-entry-month-select"
+      value={normalized === null ? '' : normalized}
+      onChange={e => onChange(e.target.value === '' ? null : Number(e.target.value))}
+      title="Months before the entry month are not payable"
+    >
+      <option value="">All year</option>
+      {MONTHS_S.map((month, index) => <option key={index + 1} value={index + 1}>{month}</option>)}
+    </select>
+  );
+}
 
 function NumInput({ value, onChange, placeholder, min }) {
   const [local, setLocal] = useState('');

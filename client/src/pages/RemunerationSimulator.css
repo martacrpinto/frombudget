@@ -112,6 +112,16 @@
   white-space: nowrap;
 }
 
+.remun-entry-month-select { font-size: 11px; padding-left: 5px; }
+.remun-entry-month-readonly { display: block; padding: 0 8px; font-size: 11px; color: var(--gray-600); }
+
+.remun-export-section { margin-top: 24px; }
+.remun-export-actions { display: flex; align-items: center; gap: 10px; }
+.remun-export-history { margin-top: 12px; overflow: auto; border: 1px solid var(--gray-100); border-radius: var(--radius-sm); }
+.remun-export-history table { min-width: 720px; }
+.remun-export-history th { padding: 8px 10px; text-align: left; background: var(--gray-50); color: var(--gray-500); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+.remun-export-history td { padding: 8px 10px; border-top: 1px solid var(--gray-100); color: var(--gray-600); font-size: 11px; }
+
 .remun-hint-tip {
   font-size: 11px;
   color: var(--gray-400);
@@ -208,10 +218,10 @@
 .remun-table:not(.remun-monthly-table) thead tr:last-child th.col-role { text-align: left; }
 
 /* Section separators in col headers — MainTable */
-.remun-table:not(.remun-monthly-table):not(.remun-all-table) thead tr:last-child th:nth-child(4)  { border-left: 2px solid #bbf7d0; }
-.remun-table:not(.remun-monthly-table):not(.remun-all-table) thead tr:last-child th:nth-child(6)  { border-left: 2px solid var(--gray-300); }
-.remun-table:not(.remun-monthly-table):not(.remun-all-table) thead tr:last-child th:nth-child(9)  { border-left: 2px solid #c7d2fe; }
-.remun-table:not(.remun-monthly-table):not(.remun-all-table) thead tr:last-child th:nth-child(14) { border-left: 2px solid var(--gray-700); }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) thead tr:last-child th:nth-child(5)  { border-left: 2px solid #bbf7d0; }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) thead tr:last-child th:nth-child(7)  { border-left: 2px solid var(--gray-300); }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) thead tr:last-child th:nth-child(10)  { border-left: 2px solid #c7d2fe; }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) thead tr:last-child th:nth-child(15) { border-left: 2px solid var(--gray-700); }
 /* AllConsolidatedTable header borders */
 .remun-all-table thead tr:last-child th:nth-child(5)  { border-left: 2px solid #bbf7d0; }
 .remun-all-table thead tr:last-child th:nth-child(7)  { border-left: 2px solid var(--gray-300); }
@@ -241,12 +251,12 @@
   text-align: right;
 }
 
-/* Section left borders — MainTable: # | Role | Name | Meal/Day | Ann.Meal | Ann.Sal | IHT | BaseTotal | Idx | Inc | FinalSal | IHT | FinalTotal | Employer | Action */
-/* Meal starts col4, Base col6, Inc col9, Employer col14 */
-.remun-table:not(.remun-monthly-table):not(.remun-all-table) .remun-row td:nth-child(4)  { border-left: 2px solid #bbf7d0; }
-.remun-table:not(.remun-monthly-table):not(.remun-all-table) .remun-row td:nth-child(6)  { border-left: 2px solid var(--gray-200); }
-.remun-table:not(.remun-monthly-table):not(.remun-all-table) .remun-row td:nth-child(9)  { border-left: 2px solid #c7d2fe; }
-.remun-table:not(.remun-monthly-table):not(.remun-all-table) .remun-row td:nth-child(14) { border-left: 2px solid var(--gray-700); }
+/* Section left borders — MainTable includes Entry month after Name. */
+/* Meal starts col5, Base col7, Inc col10, Employer col15. */
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) .remun-row td:nth-child(5)  { border-left: 2px solid #bbf7d0; }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) .remun-row td:nth-child(7)  { border-left: 2px solid var(--gray-200); }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) .remun-row td:nth-child(10) { border-left: 2px solid #c7d2fe; }
+.remun-table:not(.remun-monthly-table):not(.remun-all-table) .remun-row td:nth-child(15) { border-left: 2px solid var(--gray-700); }
 
 /* AllConsolidatedTable: # | Role | Name | Dept | Meal/Day | Ann.Meal | Ann.Sal | IHT | BaseTotal | Idx | Inc | FinalSal | IHT | FinalTotal | Employer */
 /* Meal starts col5, Base col7, Inc col10, Employer col15 */

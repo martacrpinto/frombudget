@@ -63,7 +63,14 @@ export function createSupabaseApi() {
         if (parts[0] === 'comments') return ok(rows(unwrap(await query('page_comments', { page_user_id: parts[1], year: Number(parts[2]) }).order('created_at'))));
         if (parts[0] === 'permissions') { const q = parts[1] ? query('permissions', { user_id: parts[1] }) : supabase.from('permissions').select('*'); return ok(rows(unwrap(await q))); }
         if (parts[0] === 'usermgmt') { const [p, r, ps] = await Promise.all([supabase.from('profiles').select('*').order('name'), supabase.from('profile_roles').select('*'), supabase.from('permissions').select('*')]); const roles = unwrap(r) || []; const perms = unwrap(ps) || []; return ok(rows(unwrap(p) || []).map(u => ({ ...u, ...(roles.find(x=>x.user_id===u.id) || {}), ...(perms.find(x=>x.user_id===u.id) || {}) }))); }
-        if (parts[0] === 'remuneration') { if (parts[1] === 'config') return ok(row((unwrap(await query('remuneration_config', { user_id: parts[2] })) || [])[0] || {})); if (parts[1] === 'ftes') return ok(rows(unwrap(await query('remuneration_ftes', { user_id: parts[2], year: Number(parts[3]) })))); if (parts[1] === 'ftes-all') return ok(rows(unwrap(await query('remuneration_ftes', { year: Number(parts[2]) })))); }
+        if (parts[0] === 'remuneration') {
+          if (parts[1] === 'config') return ok(row((unwrap(await query('remuneration_config', { user_id: parts[2] })) || [])[0] || {}));
+          if (parts[1] === 'ftes') return ok(rows(unwrap(await query('remuneration_ftes', { user_id: parts[2], year: Number(parts[3]) }))));
+          if (parts[1] === 'ftes-all') {
+            const result = unwrap(await supabase.from('remuneration_ftes').select('*,profiles(name,initials)').eq('year', Number(parts[2])).order('position'));
+            return ok(rows(result).map(item => ({ ...item, user_name:item.profiles?.name, user_initials:item.profiles?.initials })));
+          }
+        }
         if (parts[0] === 'dashboard') return dashboard(params);
         if (parts[0] === 'audit') { let q = supabase.from('audit_log').select('*', { count: 'exact' }).order('timestamp', { ascending: false }); if (params.action) q=q.eq('action',params.action); if(params.page) q=q.range((Number(params.page)-1)*Number(params.limit||100), Number(params.page)*Number(params.limit||100)-1); const result=await q; const data=unwrap(result); return ok({ rows: rows(data), total: result.count || 0 }); }
         if (parts[0] === 'export' && parts[1] === 'history') return ok(rows(unwrap(await supabase.from('export_history').select('*').eq('export_mode', params.mode || 'from').order('timestamp', { ascending: false }))));
@@ -83,8 +90,24 @@ export function createSupabaseApi() {
       if (parts[0] === 'categories' && parts[1] && parts.length === 2) return ok(row(unwrap(await supabase.from('categories').update(body).eq('id', parts[1]).select().single())));
       if (parts[0] === 'notes') return ok(row(unwrap(await one('row_notes', { id: crypto.randomUUID(), user_id: body.userId, category_id: body.categoryId, year: body.year, note: body.note, author_name: body.authorName }, 'user_id,category_id,year'))));
       if (parts[0] === 'comments') return ok(row(unwrap(await one('page_comments', { id: crypto.randomUUID(), page_user_id: body.pageUserId, year: body.year, author_id: body.authorId, author_name: body.authorName, author_initials: body.authorInitials, comment: body.comment, parent_id: body.parentId }))));
-      if (parts[0] === 'remuneration' && parts[1] === 'config') return ok(row(unwrap(await one('remuneration_config', { ...body, user_id: parts[2], id: body.id || crypto.randomUUID() }, 'user_id'))));
-      if (parts[0] === 'remuneration' && parts[1] === 'ftes') { const fteId = parts[2]; const userId = body.userId || body.targetUserId; return ok(row(unwrap(await one('remuneration_ftes', { ...body, ...(userId ? { user_id: userId } : {}), id: body.id || fteId || crypto.randomUUID() })))); }
+      if (parts[0] === 'remuneration' && parts[1] === 'config') {
+        const allowed = ['monthly_payments','iht_rate','meal_allowance_days','holiday_allowance_month','christmas_allowance_month'];
+        const values = Object.fromEntries(allowed.filter(key => body[key] !== undefined).map(key => [key,body[key]]));
+        return ok(row(unwrap(await one('remuneration_config', { ...values, user_id:parts[2], id:body.id || crypto.randomUUID() }, 'user_id'))));
+      }
+      if (parts[0] === 'remuneration' && parts[1] === 'ftes') {
+        if (method === 'POST' && body.count !== undefined) {
+          const userId = parts[2]; const year = Number(body.year); const count = Math.min(Math.max(Number(body.count) || 1,1),100);
+          const existing = unwrap(await supabase.from('remuneration_ftes').select('position').eq('user_id',userId).eq('year',year));
+          if ((existing?.length || 0) + count > 100) return fail({ message:'Cannot exceed 100 FTEs.' });
+          const start = Math.max(0, ...(existing || []).map(item => Number(item.position) || 0)) + 1;
+          const values = Array.from({length:count}, (_,index) => ({ id:crypto.randomUUID(), user_id:userId, year, position:start+index }));
+          return ok(rows(unwrap(await supabase.from('remuneration_ftes').insert(values).select())));
+        }
+        const allowed = ['role','collaborator_name','annual_base_salary','meal_allowance_day','indexation_pct','increase_pct','entry_month'];
+        const values = Object.fromEntries(allowed.filter(key => body[key] !== undefined).map(key => [key,body[key]]));
+        return ok(row(unwrap(await supabase.from('remuneration_ftes').update(values).eq('id',parts[2]).select().single())));
+      }
       if (parts[0] === 'export') return ok(row(unwrap(await one('export_history', body))));
       return fail({ message: `Supabase API route not implemented: ${method} ${path}` });
     },
