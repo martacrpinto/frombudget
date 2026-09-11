@@ -249,3 +249,10 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+.login-help-copy {
+  margin-top: 14px;
+  color: var(--gray-500, #8a8f8b);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}

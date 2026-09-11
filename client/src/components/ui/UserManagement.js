@@ -14,7 +14,6 @@ export default function UserManagement({ onClose }) {
   const [editingId,       setEditingId]       = useState(null);
   const [editName,        setEditName]        = useState('');
   const [editingPassId,   setEditingPassId]   = useState(null);
-  const [editPass,        setEditPass]        = useState('');
   const [setupLoginId,    setSetupLoginId]    = useState(null);
   const [setupEmail,      setSetupEmail]      = useState('');
   const [newName,         setNewName]         = useState('');
@@ -113,16 +112,16 @@ export default function UserManagement({ onClose }) {
     }
   };
 
-  const handleChangePassword = async (userId) => {
-    if (!editPass.trim()) return;
+  const handleResetPassword = async (user) => {
     setSaving(true);
     try {
-      const newPass = editPass.trim();
-      await adminUsers('set-password', { profileId: userId, password: newPass });
+      const temporaryPassword = generateTemporaryPassword();
+      await adminUsers('set-password', { profileId: user.id, password: temporaryPassword });
       setEditingPassId(null);
-      setEditPass('');
-      addNotification('success', 'Password updated successfully.');
-    } catch (e) { addNotification('error', e.response?.data?.error || 'Failed to update password.'); }
+      setCredentialsCopied(false);
+      setTemporaryCredentials({ name: user.name, email: user.email, password: temporaryPassword });
+      addNotification('success', `Temporary login created for "${user.name}".`);
+    } catch (e) { addNotification('error', e?.message || 'Failed to reset password.'); }
     finally { setSaving(false); }
   };
 
@@ -249,8 +248,8 @@ export default function UserManagement({ onClose }) {
                       {user.email ? (
                         /* Change password — never read or display the current password */
                         <button className="usermgmt-btn"
-                          onClick={() => { setEditingPassId(user.id); setEditPass(''); setEditingId(null); setSetupLoginId(null); }}
-                          title="Issue a new temporary password">
+                          onClick={() => { setEditingPassId(user.id); setEditingId(null); setSetupLoginId(null); }}
+                          title="Reset with a temporary password">
                           <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                             <rect x="2.5" y="5.5" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.2"/>
                             <path d="M4.5 5.5V4a2 2 0 014 0v1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
@@ -281,29 +280,17 @@ export default function UserManagement({ onClose }) {
                 </div>
                 {editingPassId === user.id && (
                   <div className="usermgmt-pass-row">
-                    <span style={{fontSize:11.5,color:'var(--gray-500)',whiteSpace:'nowrap'}}>
-                      Password for <strong>{user.name}</strong>:
+                    <span className="usermgmt-reset-copy">
+                      Generate new temporary credentials for <strong>{user.name}</strong>? Their current password will stop working.
                     </span>
-                    <input
-                      type="password"
-                      className="modal-input usermgmt-name-input"
-                      value={editPass}
-                      onChange={e => setEditPass(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') handleChangePassword(user.id);
-                        if (e.key === 'Escape') { setEditingPassId(null); setEditPass(''); }
-                      }}
-                      placeholder="Password..."
-                      autoFocus
-                    />
                     <button className="modal-btn modal-btn--primary"
                       style={{padding:'5px 10px',fontSize:12,whiteSpace:'nowrap'}}
-                      onClick={() => handleChangePassword(user.id)} disabled={saving || !editPass.trim()}>
-                      Save
+                      onClick={() => handleResetPassword(user)} disabled={saving}>
+                      {saving ? 'Generating...' : 'Generate'}
                     </button>
                     <button className="modal-btn modal-btn--secondary"
                       style={{padding:'5px 10px',fontSize:12}}
-                      onClick={() => { setEditingPassId(null); setEditPass(''); }}>
+                      onClick={() => setEditingPassId(null)}>
                       ✕
                     </button>
                   </div>

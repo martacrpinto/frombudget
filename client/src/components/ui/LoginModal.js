@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { isPasswordActionUrl, isSupabaseConfigured, requestPasswordReset, updatePassword, supabase } from '../../lib/supabase';
+import { isPasswordActionUrl, isSupabaseConfigured, updatePassword, supabase } from '../../lib/supabase';
 import './LoginModal.css';
 
 export default function LoginModal({ forcePasswordAction = false, onPasswordActionFinished = () => {} }) {
@@ -11,7 +11,6 @@ export default function LoginModal({ forcePasswordAction = false, onPasswordActi
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
-  const [resetSent, setResetSent] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(() => forcePasswordAction || isPasswordActionUrl());
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -73,14 +72,6 @@ export default function LoginModal({ forcePasswordAction = false, onPasswordActi
     }
   };
 
-  const handleReset = async () => {
-    if (!email.trim()) { setError('Enter your email to reset your password.'); return; }
-    setLoading(true); setError('');
-    try { await requestPasswordReset(email.trim()); setResetSent(true); }
-    catch { setError('Unable to send a reset email. Please try again.'); }
-    finally { setLoading(false); }
-  };
-
   const handlePasswordUpdate = async () => {
     if (newPassword.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (newPassword !== confirmPassword) { setError('Passwords do not match.'); return; }
@@ -135,13 +126,12 @@ export default function LoginModal({ forcePasswordAction = false, onPasswordActi
         ) : isSupabaseConfigured ? (
           <div className="login-form" onKeyDown={e => e.key === 'Enter' && !loading && handleLogin()}>
             <label className="login-label">Email</label>
-            <input className={`login-input ${error ? 'login-input--error' : ''}`} type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); setResetSent(false); }} placeholder="you@company.com" autoComplete="email" autoFocus />
+            <input className={`login-input ${error ? 'login-input--error' : ''}`} type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} placeholder="you@company.com" autoComplete="email" autoFocus />
             <label className="login-label">Password</label>
             <input ref={passwordRef} type="password" className={`login-input ${error ? 'login-input--error' : ''}`} value={password} onChange={e => { setPassword(e.target.value); setError(''); }} placeholder="Password" autoComplete="current-password" />
             {error && <div className="login-error">{error}</div>}
-            {resetSent && <div className="login-success">Password reset email sent.</div>}
             <button className="login-btn" onClick={handleLogin} disabled={!email || !password || loading}>{loading ? <span className="login-btn-spinner" /> : 'Enter'}</button>
-            <button className="login-back-btn" type="button" onClick={handleReset} disabled={loading}>Forgot password?</button>
+            <div className="login-help-copy">Need a new password? Ask an administrator for temporary login credentials.</div>
           </div>
         ) : step === 'select' ? (
           /* ── Step 1: Select user ── */

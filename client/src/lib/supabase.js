@@ -15,11 +15,6 @@ export async function signInWithPassword(email, password) {
   return supabase.auth.signInWithPassword({ email, password });
 }
 
-export async function requestPasswordReset(email) {
-  if (!supabase) throw new Error('Supabase is not configured');
-  return supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/` });
-}
-
 export function isPasswordActionUrl() {
   if (typeof window === 'undefined') return false;
   const params = new URLSearchParams(window.location.search);

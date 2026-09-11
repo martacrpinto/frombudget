@@ -258,3 +258,10 @@
   color: var(--sage, #78917a);
   font-weight: 700;
 }
+
+.usermgmt-reset-copy {
+  flex: 1;
+  color: var(--gray-600, #6b706c);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
